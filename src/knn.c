@@ -88,46 +88,6 @@ int compare_ncds(const void *a, const void *b)
     return 0;
 }
 
-// aaaaaaaa|aaaaaaaa|aaaaaaa|aaaaaaa
-// ^        ^        ^       ^
-
-// O(N + M)
-
-/*
-size_t klassify_sample(Sample *train, size_t train_count, Nob_String_View text, size_t k)
-{
-    NCDs ncds = {0};
-
-    float cb = deflate_sv(text).count;
-    for (size_t i = 0; i < train_count; ++i) {
-        float distance = ncd(train[i].text, text, cb);
-        nob_temp_reset();
-        nob_da_append(&ncds, ((NCD) {
-            .distance = distance,
-            .klass = train[i].klass,
-        }));
-        printf("\rClassifying %zu/%zu", i, train_count);
-    }
-    printf("\n");
-
-    qsort(ncds.items, ncds.count, sizeof(*ncds.items), compare_ncds);
-
-    size_t klass_freq[NOB_ARRAY_LEN(klass_names)] = {0};
-    for (size_t i = 0; i < ncds.count && i < k; ++i) {
-        klass_freq[ncds.items[i].klass] += 1;
-    }
-
-    size_t predicted_klass = 0;
-    for (size_t i = 1; i < NOB_ARRAY_LEN(klass_names); ++i) {
-        if (klass_freq[predicted_klass] < klass_freq[i]) {
-            predicted_klass = i;
-        }
-    }
-
-    return predicted_klass;
-}
-*/
-
 typedef struct {
     Sample *train;
     size_t train_count;
