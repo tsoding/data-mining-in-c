@@ -11,7 +11,7 @@ bool build_program(const char *source_path, const char *output_path)
     nob_cmd_append(&cmd, "-o", output_path);
     nob_cmd_append(&cmd, source_path);
     nob_cmd_append(&cmd, "-L./raylib/", "-L./zlib/");
-    nob_cmd_append(&cmd, "-lraylib", "-lm", "-lz");
+    nob_cmd_append(&cmd, "-lraylib", "-lm", "-lz", "-ldl", "-lpthread");
     return nob_cmd_run_sync(cmd);
 }
 
