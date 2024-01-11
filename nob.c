@@ -19,8 +19,8 @@ int main(int argc, char **argv)
 {
     NOB_GO_REBUILD_URSELF(argc, argv);
     if (!nob_mkdir_if_not_exists("./build/")) return 1;
-    if (!build_program("./src/2d.c", "./build/2d")) return 1;
-    if (!build_program("./src/3d.c", "./build/3d")) return 1;
+    // if (!build_program("./src/2d.c", "./build/2d")) return 1;
+    // if (!build_program("./src/3d.c", "./build/3d")) return 1;
     if (!build_program("./src/knn.c", "./build/knn")) return 1;
     return 0;
 }
