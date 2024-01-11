@@ -191,6 +191,14 @@ void usage(const char *program)
 
 char buffer[512];
 
+double clock_get_secs(void)
+{
+    struct timespec ts = {0};
+    int ret = clock_gettime(CLOCK_MONOTONIC, &ts);
+    assert(ret == 0);
+    return (double)ts.tv_sec + ts.tv_nsec*1e-9;
+}
+
 int main(int argc, char **argv)
 {
     const char *program = nob_shift_args(&argc, &argv);
@@ -219,8 +227,10 @@ int main(int argc, char **argv)
     printf("Provide News Title:\n");
     while (true) {
         fgets(buffer, sizeof(buffer), stdin);
+        double begin = clock_get_secs();
         size_t predicted_klass = klass_predictor_predict(&kp, buffer, 3);
-        printf("Topic: %s\n", klass_names[predicted_klass]);
+        double end = clock_get_secs();
+        printf("Topic: %s (%.3lfsecs)\n", klass_names[predicted_klass], end - begin);
     }
 
     return 0;
