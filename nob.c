@@ -6,11 +6,11 @@ bool build_program(const char *source_path, const char *output_path)
     Nob_Cmd cmd = {0};
     nob_cmd_append(&cmd, "cc");
     nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
-    nob_cmd_append(&cmd, "-I./raylib/", "-I./stb/");
+    nob_cmd_append(&cmd, "-I./raylib/", "-I./zlib/", "-I./stb/");
     nob_cmd_append(&cmd, "-O3");
     nob_cmd_append(&cmd, "-o", output_path);
     nob_cmd_append(&cmd, source_path);
-    nob_cmd_append(&cmd, "-L./raylib/");
+    nob_cmd_append(&cmd, "-L./raylib/", "-L./zlib/");
     nob_cmd_append(&cmd, "-lraylib", "-lm", "-lz");
     return nob_cmd_run_sync(cmd);
 }
