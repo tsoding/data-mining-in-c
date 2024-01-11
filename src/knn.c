@@ -201,13 +201,13 @@ void usage(const char *program)
 
 void interactive_mode(Klass_Predictor *kp)
 {
-    nob_log(NOB_INFO, "Provide News Title:\n");
+    nob_log(NOB_INFO, "Provide News Title:");
     while (true) {
         fgets(buffer, sizeof(buffer), stdin);
         double begin = clock_get_secs();
         size_t predicted_klass = klass_predictor_predict(kp, nob_sv_from_cstr(buffer), 3);
         double end = clock_get_secs();
-        nob_log(NOB_INFO, "Topic: %s (%.3lfsecs)\n", klass_names[predicted_klass], end - begin);
+        nob_log(NOB_INFO, "Topic: %s (%.3lfsecs)", klass_names[predicted_klass], end - begin);
     }
 }
 
