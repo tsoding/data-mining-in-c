@@ -95,7 +95,6 @@ typedef struct {
 
     NCDs ncds;
     Arena arena;
-    int count;
 } Klassify_State;
 
 void *klassify_thread(void *params)
@@ -110,7 +109,6 @@ void *klassify_thread(void *params)
             .distance = distance,
             .klass = state->train[i].klass,
         }));
-        state->count += 1;
     }
 
     qsort(state->ncds.items, state->ncds.count, sizeof(*state->ncds.items), compare_ncds);
@@ -131,6 +129,8 @@ typedef struct {
 
 void klass_predictor_init(Klass_Predictor *kp, Samples train_samples)
 {
+    memset(kp, 0, sizeof(Klass_Predictor));
+
     kp->nprocs = get_nprocs();
     kp->chunk_size = train_samples.count/kp->nprocs;
     kp->chunk_rem = train_samples.count%kp->nprocs;
@@ -144,12 +144,13 @@ void klass_predictor_init(Klass_Predictor *kp, Samples train_samples)
 
 size_t klass_predictor_predict(Klass_Predictor *kp, const char *text)
 {
-    memset(kp->states, 0, kp->nprocs*sizeof(Klassify_State));
     for (size_t i = 0; i < kp->nprocs; ++i) {
         kp->states[i].train = kp->train_samples.items + i*kp->chunk_size;
         kp->states[i].train_count = kp->chunk_size;
         if (i == kp->nprocs - 1) kp->states[i].train_count += kp->chunk_rem;
         kp->states[i].text = nob_sv_from_cstr(text);
+        kp->states[i].ncds.count = 0;
+        arena_reset(&kp->states[i].arena);
         if (pthread_create(&kp->threads[i], NULL, klassify_thread, &kp->states[i]) != 0) {
             nob_log(NOB_ERROR, "Could not create thread");
             return 1;
