@@ -205,7 +205,7 @@ void interactive_mode(Klass_Predictor *kp)
     while (true) {
         fgets(buffer, sizeof(buffer), stdin);
         double begin = clock_get_secs();
-        size_t predicted_klass = klass_predictor_predict(kp, nob_sv_from_cstr(buffer), 3);
+        size_t predicted_klass = klass_predictor_predict(kp, nob_sv_from_cstr(buffer), 2);
         double end = clock_get_secs();
         nob_log(NOB_INFO, "Topic: %s (%.3lfsecs)", klass_names[predicted_klass], end - begin);
     }
@@ -251,15 +251,15 @@ int main(int argc, char **argv)
             klass_predictor_predict(&kp, text, 3);
 
             double begin = clock_get_secs();
-            size_t predicted_klass = klass_predictor_predict(&kp, nob_sv_from_cstr(buffer), 3);
+            size_t predicted_klass = klass_predictor_predict(&kp, nob_sv_from_cstr(buffer), 2);
             double end = clock_get_secs();
+            if (predicted_klass == actual_klass) success += 1;
             nob_log(NOB_INFO, "Text: "SV_Fmt, SV_Arg(text));
             nob_log(NOB_INFO, "Predicted Topic: %s", klass_names[predicted_klass]);
             nob_log(NOB_INFO, "Actual Topic: %s", klass_names[actual_klass]);
             nob_log(NOB_INFO, "Elapsed Time: %.3lfsecs", end - begin);
             nob_log(NOB_INFO, "Success Rate: %zu/%zu (%f%%)", success, test_samples.count, (float)success/test_samples.count);
             nob_log(NOB_INFO, "");
-            if (predicted_klass == actual_klass) success += 1;
         }
 
     }
