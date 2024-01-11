@@ -211,8 +211,8 @@ int main(int argc, char **argv)
     Klass_Predictor kp = {0};
     klass_predictor_init(&kp, train_samples);
 
+    printf("Provide News Title:\n");
     while (true) {
-        printf("Provide News Title\n");
         fgets(buffer, sizeof(buffer), stdin);
         size_t predicted_klass = klass_predictor_predict(&kp, buffer);
         printf("Topic: %s\n", klass_names[predicted_klass]);
