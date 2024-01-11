@@ -256,12 +256,12 @@ int main(int argc, char **argv)
             nob_log(NOB_INFO, "Text: "SV_Fmt, SV_Arg(text));
             nob_log(NOB_INFO, "Predicted Topic: %s", klass_names[predicted_klass]);
             nob_log(NOB_INFO, "Actual Topic: %s", klass_names[actual_klass]);
-            nob_log(NOB_INFO, "Elapsed time: %.3lfsecs", end - begin);
+            nob_log(NOB_INFO, "Elapsed Time: %.3lfsecs", end - begin);
+            nob_log(NOB_INFO, "Success Rate: %zu/%zu (%f%%)", success, test_samples.count, (float)success/test_samples.count);
             nob_log(NOB_INFO, "");
             if (predicted_klass == actual_klass) success += 1;
         }
 
-        nob_log(NOB_INFO, "Success rate %zu/%zu (%f%%)", success, test_samples.count, (float)success/test_samples.count);
     }
 
     return 0;
