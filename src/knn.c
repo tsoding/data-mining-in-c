@@ -111,8 +111,6 @@ void *klassify_thread(void *params)
         }));
     }
 
-    qsort(state->ncds.items, state->ncds.count, sizeof(*state->ncds.items), compare_ncds);
-
     return NULL;
 }
 
