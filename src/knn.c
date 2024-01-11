@@ -144,13 +144,13 @@ void klass_predictor_init(Klass_Predictor *kp, Samples train_samples)
     memset(kp->states, 0, kp->nprocs*sizeof(Klassify_State));
 }
 
-size_t klass_predictor_predict(Klass_Predictor *kp, const char *text, size_t k)
+size_t klass_predictor_predict(Klass_Predictor *kp, Nob_String_View text, size_t k)
 {
     for (size_t i = 0; i < kp->nprocs; ++i) {
         kp->states[i].train = kp->train_samples.items + i*kp->chunk_size;
         kp->states[i].train_count = kp->chunk_size;
         if (i == kp->nprocs - 1) kp->states[i].train_count += kp->chunk_rem;
-        kp->states[i].text = nob_sv_from_cstr(text);
+        kp->states[i].text = text;
         kp->states[i].ncds.count = 0;
         arena_reset(&kp->states[i].arena);
         if (pthread_create(&kp->threads[i], NULL, klassify_thread, &kp->states[i]) != 0) {
@@ -184,11 +184,6 @@ size_t klass_predictor_predict(Klass_Predictor *kp, const char *text, size_t k)
     return predicted_klass;
 }
 
-void usage(const char *program)
-{
-    nob_log(NOB_ERROR, "Usage: %s <train.csv>", program);
-}
-
 char buffer[512];
 
 double clock_get_secs(void)
@@ -197,6 +192,23 @@ double clock_get_secs(void)
     int ret = clock_gettime(CLOCK_MONOTONIC, &ts);
     assert(ret == 0);
     return (double)ts.tv_sec + ts.tv_nsec*1e-9;
+}
+
+void usage(const char *program)
+{
+    nob_log(NOB_ERROR, "Usage: %s <train.csv> [test.csv]", program);
+}
+
+void interactive_mode(Klass_Predictor *kp)
+{
+    nob_log(NOB_INFO, "Provide News Title:\n");
+    while (true) {
+        fgets(buffer, sizeof(buffer), stdin);
+        double begin = clock_get_secs();
+        size_t predicted_klass = klass_predictor_predict(kp, nob_sv_from_cstr(buffer), 3);
+        double end = clock_get_secs();
+        nob_log(NOB_INFO, "Topic: %s (%.3lfsecs)\n", klass_names[predicted_klass], end - begin);
+    }
 }
 
 int main(int argc, char **argv)
@@ -224,13 +236,32 @@ int main(int argc, char **argv)
     Klass_Predictor kp = {0};
     klass_predictor_init(&kp, train_samples);
 
-    printf("Provide News Title:\n");
-    while (true) {
-        fgets(buffer, sizeof(buffer), stdin);
-        double begin = clock_get_secs();
-        size_t predicted_klass = klass_predictor_predict(&kp, buffer, 3);
-        double end = clock_get_secs();
-        printf("Topic: %s (%.3lfsecs)\n", klass_names[predicted_klass], end - begin);
+    if (argc <= 0) {
+        interactive_mode(&kp);
+    } else {
+        const char *test_path = nob_shift_args(&argc, &argv);
+        Nob_String_Builder test_content = {0};
+        if (!nob_read_entire_file(test_path, &test_content)) return 1;
+        Samples test_samples = parse_samples(nob_sv_from_parts(test_content.items, test_content.count));
+
+        size_t success = 0;
+        for (size_t i = 0; i < test_samples.count; ++i) {
+            Nob_String_View text = test_samples.items[i].text;
+            size_t actual_klass = test_samples.items[i].klass;
+            klass_predictor_predict(&kp, text, 3);
+
+            double begin = clock_get_secs();
+            size_t predicted_klass = klass_predictor_predict(&kp, nob_sv_from_cstr(buffer), 3);
+            double end = clock_get_secs();
+            nob_log(NOB_INFO, "Text: "SV_Fmt, SV_Arg(text));
+            nob_log(NOB_INFO, "Predicted Topic: %s", klass_names[predicted_klass]);
+            nob_log(NOB_INFO, "Actual Topic: %s", klass_names[actual_klass]);
+            nob_log(NOB_INFO, "Elapsed time: %.3lfsecs", end - begin);
+            nob_log(NOB_INFO, "");
+            if (predicted_klass == actual_klass) success += 1;
+        }
+
+        nob_log(NOB_INFO, "Success rate %zu/%zu (%f%%)", success, test_samples.count, (float)success/test_samples.count);
     }
 
     return 0;
