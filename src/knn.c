@@ -129,8 +129,6 @@ typedef struct {
 
 void klass_predictor_init(Klass_Predictor *kp, Samples train_samples)
 {
-    memset(kp, 0, sizeof(Klass_Predictor));
-
     kp->nprocs = get_nprocs();
     kp->chunk_size = train_samples.count/kp->nprocs;
     kp->chunk_rem = train_samples.count%kp->nprocs;
@@ -138,8 +136,10 @@ void klass_predictor_init(Klass_Predictor *kp, Samples train_samples)
 
     kp->threads = malloc(kp->nprocs*sizeof(pthread_t));
     assert(kp->threads != NULL);
+    memset(kp->threads, 0, kp->nprocs*sizeof(pthread_t));
     kp->states = malloc(kp->nprocs*sizeof(Klassify_State));
     assert(kp->states != NULL);
+    memset(kp->states, 0, kp->nprocs*sizeof(Klassify_State));
 }
 
 size_t klass_predictor_predict(Klass_Predictor *kp, const char *text)
