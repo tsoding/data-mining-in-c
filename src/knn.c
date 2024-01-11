@@ -158,69 +158,54 @@ void *klassify_thread(void *params)
     return NULL;
 }
 
-int main(int argc, char **argv)
+typedef struct {
+    size_t nprocs;
+    size_t chunk_size;
+    size_t chunk_rem;
+
+    Samples train_samples;
+
+    pthread_t *threads;
+    Klassify_State *states;
+} Klass_Predictor;
+
+void klass_predictor_init(Klass_Predictor *kp, Samples train_samples)
 {
-    const char *program = nob_shift_args(&argc, &argv);
+    kp->nprocs = get_nprocs();
+    kp->chunk_size = train_samples.count/kp->nprocs;
+    kp->chunk_rem = train_samples.count%kp->nprocs;
+    kp->train_samples = train_samples;
 
-    if (argc <= 0) {
-        nob_log(NOB_ERROR, "Usage: %s <train.csv> <test.csv>", program);
-        nob_log(NOB_ERROR, "ERROR: no train file is provided");
-        return 1;
-    }
-    const char *train_path = nob_shift_args(&argc, &argv);
-    Nob_String_Builder train_content = {0};
-    if (!nob_read_entire_file(train_path, &train_content)) return 1;
-    Samples train_samples = parse_samples(nob_sv_from_parts(train_content.items, train_content.count));
+    kp->threads = malloc(kp->nprocs*sizeof(pthread_t));
+    assert(kp->threads != NULL);
+    kp->states = malloc(kp->nprocs*sizeof(Klassify_State));
+    assert(kp->states != NULL);
+}
 
-    if (argc <= 0) {
-        nob_log(NOB_ERROR, "Usage: %s <train.csv> <test.csv>", program);
-        nob_log(NOB_ERROR, "ERROR: no test file is provided");
-        return 1;
-    }
-    const char *test_path = nob_shift_args(&argc, &argv);
-    Nob_String_Builder test_content = {0};
-    if (!nob_read_entire_file(test_path, &test_content)) return 1;
-    Samples test_samples = parse_samples(nob_sv_from_parts(test_content.items, test_content.count));
-
-    // const char *text = "Investigation into why a panel blew off a Boeing Max 9 jet focuses on missing bolts. Federal regulators are extending the grounding of some Boeing jets after an Alaska Airlines plane lost a side panel last week.";
-    //const char *text = "Tennessee Titans fire coach Mike Vrabel after back-to-back losing seasons The Tennessee Titans have fired coach Mike Vrabel after six seasons with the franchise having won only six of the past 24 games.";
-    // const char *text = "Stock market today: Asian shares retreat after a lackluster day on Wall St, but Tokyo jumps 2%. Asian shares retreated Wednesday after a lackluster session on Wall Street, though Tokyo broke ranks, gaining more than 2% as a weaker yen lifted stock prices for export manufacturers.";
-    // const char *text = "NASA postpones landing astronauts on the moon until at least 2026. Astronauts will have to wait until next year before flying to the moon and at least two years before landing on it.";
-    //const char *text = "Taters the cat steals the show in first video sent by laser from deep space. An orange tabby cat named Taters stars in the first video sent by laser from deep space, stealing the show as he chases a red laser light.";
-    // const char *text = "Startup firm Patronus creates diagnostic tool to catch genAI mistakes Patronus' SimpleSafetyTests checks outputs from AI chatbots and other LLM-based tools to detect anomalies. The goal is to evaluate whether a model is going to fail — or is already failing.";
-    const char *text = "Spam suspension hits Sohu.com shares (FT.com),FT.com - Shares in Sohu.com, a leading US-listed Chinese internet portal, fell more than 10 per cent on Friday after China's biggest mobile phone network operator imposed a one-year suspension on its multimedia messaging services because of customers being sent spam.";
-
-    size_t nprocs = get_nprocs();
-    size_t chunk_size = train_samples.count/nprocs;
-    size_t chunk_rem = train_samples.count%nprocs;
-
-    pthread_t *threads = malloc(nprocs*sizeof(pthread_t));
-    assert(threads != NULL);
-    Klassify_State *states = malloc(nprocs*sizeof(Klassify_State));
-    assert(states != NULL);
-    memset(states, 0, nprocs*sizeof(Klassify_State));
-
-    for (size_t i = 0; i < nprocs; ++i) {
-        states[i].train = train_samples.items + i*chunk_size;
-        states[i].train_count = chunk_size;
-        if (i == nprocs - 1) states[i].train_count += chunk_rem;
-        states[i].text = nob_sv_from_cstr(text);
-        if (pthread_create(&threads[i], NULL, klassify_thread, &states[i]) != 0) {
+size_t klass_predictor_predict(Klass_Predictor *kp, const char *text)
+{
+    memset(kp->states, 0, kp->nprocs*sizeof(Klassify_State));
+    for (size_t i = 0; i < kp->nprocs; ++i) {
+        kp->states[i].train = kp->train_samples.items + i*kp->chunk_size;
+        kp->states[i].train_count = kp->chunk_size;
+        if (i == kp->nprocs - 1) kp->states[i].train_count += kp->chunk_rem;
+        kp->states[i].text = nob_sv_from_cstr(text);
+        if (pthread_create(&kp->threads[i], NULL, klassify_thread, &kp->states[i]) != 0) {
             nob_log(NOB_ERROR, "Could not create thread");
             return 1;
         }
     }
 
-    for (size_t i = 0; i < nprocs; ++i) {
-        if (pthread_join(threads[i], NULL) != 0) {
+    for (size_t i = 0; i < kp->nprocs; ++i) {
+        if (pthread_join(kp->threads[i], NULL) != 0) {
             nob_log(NOB_ERROR, "Could not join thread");
             return 1;
         }
     }
 
     size_t klass_freq[NOB_ARRAY_LEN(klass_names)] = {0};
-    for (size_t i = 0; i < nprocs; ++i) {
-        klass_freq[states[i].ncds.items[0].klass] += 1;
+    for (size_t i = 0; i < kp->nprocs; ++i) {
+        klass_freq[kp->states[i].ncds.items[0].klass] += 1;
     }
 
     size_t predicted_klass = 0;
@@ -230,8 +215,47 @@ int main(int argc, char **argv)
         }
     }
 
-    nob_log(NOB_INFO, "Text: %s", text);
-    nob_log(NOB_INFO, "Klass: %s", klass_names[predicted_klass]);
+    return predicted_klass;
+}
+
+void usage(const char *program)
+{
+    nob_log(NOB_ERROR, "Usage: %s <train.csv>", program);
+}
+
+char buffer[512];
+
+int main(int argc, char **argv)
+{
+    const char *program = nob_shift_args(&argc, &argv);
+
+    if (argc <= 0) {
+        usage(program);
+        nob_log(NOB_ERROR, "ERROR: no train file is provided");
+        return 1;
+    }
+    const char *train_path = nob_shift_args(&argc, &argv);
+    Nob_String_Builder train_content = {0};
+    if (!nob_read_entire_file(train_path, &train_content)) return 1;
+    Samples train_samples = parse_samples(nob_sv_from_parts(train_content.items, train_content.count));
+
+    // const char *text = "Investigation into why a panel blew off a Boeing Max 9 jet focuses on missing bolts. Federal regulators are extending the grounding of some Boeing jets after an Alaska Airlines plane lost a side panel last week.";
+    //const char *text = "Tennessee Titans fire coach Mike Vrabel after back-to-back losing seasons The Tennessee Titans have fired coach Mike Vrabel after six seasons with the franchise having won only six of the past 24 games.";
+    // const char *text = "Stock market today: Asian shares retreat after a lackluster day on Wall St, but Tokyo jumps 2%. Asian shares retreated Wednesday after a lackluster session on Wall Street, though Tokyo broke ranks, gaining more than 2% as a weaker yen lifted stock prices for export manufacturers.";
+    // const char *text = "NASA postpones landing astronauts on the moon until at least 2026. Astronauts will have to wait until next year before flying to the moon and at least two years before landing on it.";
+    //const char *text = "Taters the cat steals the show in first video sent by laser from deep space. An orange tabby cat named Taters stars in the first video sent by laser from deep space, stealing the show as he chases a red laser light.";
+    // const char *text = "Startup firm Patronus creates diagnostic tool to catch genAI mistakes Patronus' SimpleSafetyTests checks outputs from AI chatbots and other LLM-based tools to detect anomalies. The goal is to evaluate whether a model is going to fail — or is already failing.";
+    // const char *text = "Spam suspension hits Sohu.com shares (FT.com),FT.com - Shares in Sohu.com, a leading US-listed Chinese internet portal, fell more than 10 per cent on Friday after China's biggest mobile phone network operator imposed a one-year suspension on its multimedia messaging services because of customers being sent spam.";
+
+    Klass_Predictor kp = {0};
+    klass_predictor_init(&kp, train_samples);
+
+    while (true) {
+        printf("Provide News Title\n");
+        fgets(buffer, sizeof(buffer), stdin);
+        size_t predicted_klass = klass_predictor_predict(&kp, buffer);
+        printf("Topic: %s\n", klass_names[predicted_klass]);
+    }
 
     return 0;
 }
