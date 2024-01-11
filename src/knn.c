@@ -125,6 +125,8 @@ typedef struct {
 
     pthread_t *threads;
     Klassify_State *states;
+
+    NCDs ncds;
 } Klass_Predictor;
 
 void klass_predictor_init(Klass_Predictor *kp, Samples train_samples)
@@ -142,7 +144,7 @@ void klass_predictor_init(Klass_Predictor *kp, Samples train_samples)
     memset(kp->states, 0, kp->nprocs*sizeof(Klassify_State));
 }
 
-size_t klass_predictor_predict(Klass_Predictor *kp, const char *text)
+size_t klass_predictor_predict(Klass_Predictor *kp, const char *text, size_t k)
 {
     for (size_t i = 0; i < kp->nprocs; ++i) {
         kp->states[i].train = kp->train_samples.items + i*kp->chunk_size;
@@ -153,20 +155,23 @@ size_t klass_predictor_predict(Klass_Predictor *kp, const char *text)
         arena_reset(&kp->states[i].arena);
         if (pthread_create(&kp->threads[i], NULL, klassify_thread, &kp->states[i]) != 0) {
             nob_log(NOB_ERROR, "Could not create thread");
-            return 1;
+            exit(1);
         }
     }
 
+    kp->ncds.count = 0;
     for (size_t i = 0; i < kp->nprocs; ++i) {
         if (pthread_join(kp->threads[i], NULL) != 0) {
             nob_log(NOB_ERROR, "Could not join thread");
-            return 1;
+            exit(1);
         }
+        nob_da_append_many(&kp->ncds, kp->states[i].ncds.items, kp->states[i].ncds.count);
     }
+    qsort(kp->ncds.items, kp->ncds.count, sizeof(*kp->ncds.items), compare_ncds);
 
     size_t klass_freq[NOB_ARRAY_LEN(klass_names)] = {0};
-    for (size_t i = 0; i < kp->nprocs; ++i) {
-        klass_freq[kp->states[i].ncds.items[0].klass] += 1;
+    for (size_t i = 0; i < k && i < kp->ncds.count; ++i) {
+        klass_freq[kp->ncds.items[i].klass] += 1;
     }
 
     size_t predicted_klass = 0;
@@ -214,7 +219,7 @@ int main(int argc, char **argv)
     printf("Provide News Title:\n");
     while (true) {
         fgets(buffer, sizeof(buffer), stdin);
-        size_t predicted_klass = klass_predictor_predict(&kp, buffer);
+        size_t predicted_klass = klass_predictor_predict(&kp, buffer, 3);
         printf("Topic: %s\n", klass_names[predicted_klass]);
     }
 
