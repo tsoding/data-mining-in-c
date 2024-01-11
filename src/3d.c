@@ -182,6 +182,7 @@ int main(int argc, char **argv)
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(800, 600, "3D K-means");
+    if (!IsWindowReady()) return 1;
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_SPACE)) {
             update_means(cluster_radius);

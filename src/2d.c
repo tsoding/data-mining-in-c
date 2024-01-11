@@ -171,6 +171,7 @@ int main(void)
     srand(time(0));
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(800, 600, "K-means");
+    if (!IsWindowReady()) return 1;
 
     generate_new_state(min_x, max_x, min_y, max_y);
     recluster_state();
