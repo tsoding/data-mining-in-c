@@ -71,7 +71,7 @@ typedef struct {
 
 float ncd(Arena *arena, Nob_String_View a, Nob_String_View b, float cb)
 {
-    Nob_String_View ab = nob_sv_from_cstr(arena_sprintf(arena, SV_Fmt SV_Fmt, SV_Arg(a), SV_Arg(b)));
+    Nob_String_View ab = nob_sv_from_cstr(arena_sprintf(arena, SV_Fmt" "SV_Fmt, SV_Arg(a), SV_Arg(b)));
     float ca = deflate_sv(arena, a).count;
     float cab = deflate_sv(arena, ab).count;
     float mn = ca; if (mn > cb) mn = cb;
