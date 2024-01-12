@@ -9,6 +9,8 @@
 #define ARENA_IMPLEMENTATION
 #include "arena.h"
 
+#define K 2
+
 Nob_String_View deflate_sv(Arena *arena, Nob_String_View sv)
 {
     void *output = arena_alloc(arena, sv.count*2);
@@ -203,7 +205,7 @@ void interactive_mode(Klass_Predictor *kp)
     while (true) {
         fgets(buffer, sizeof(buffer), stdin);
         double begin = clock_get_secs();
-        size_t predicted_klass = klass_predictor_predict(kp, nob_sv_from_cstr(buffer), 2);
+        size_t predicted_klass = klass_predictor_predict(kp, nob_sv_from_cstr(buffer), K);
         double end = clock_get_secs();
         nob_log(NOB_INFO, "Topic: %s (%.3lfsecs)", klass_names[predicted_klass], end - begin);
     }
@@ -249,7 +251,7 @@ int main(int argc, char **argv)
             klass_predictor_predict(&kp, text, 3);
 
             double begin = clock_get_secs();
-            size_t predicted_klass = klass_predictor_predict(&kp, nob_sv_from_cstr(buffer), 2);
+            size_t predicted_klass = klass_predictor_predict(&kp, nob_sv_from_cstr(buffer), K);
             double end = clock_get_secs();
             if (predicted_klass == actual_klass) success += 1;
             nob_log(NOB_INFO, "Text: "SV_Fmt, SV_Arg(text));
