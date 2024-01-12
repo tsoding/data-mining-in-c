@@ -11,18 +11,21 @@
 
 #define K 2
 
+// Stolen from https://gist.github.com/arq5x/5315739
 Nob_String_View deflate_sv(Arena *arena, Nob_String_View sv)
 {
-    void *output = arena_alloc(arena, sv.count*2);
+    size_t output_size = sv.count*2;
+    void *output = arena_alloc(arena, output_size);
 
     z_stream defstream = {0};
     defstream.avail_in = (uInt)sv.count;//(uInt)strlen(a)+1; // size of input, string + terminator
     defstream.next_in = (Bytef *)sv.data; // input char array
-    defstream.avail_out = (uInt)sv.count*2; // size of output
+    defstream.avail_out = (uInt)output_size; // size of output
     defstream.next_out = (Bytef *)output; // output char array
 
     deflateInit(&defstream, Z_BEST_COMPRESSION);
-    deflate(&defstream, Z_FINISH);
+    int result = deflate(&defstream, Z_FINISH);
+    assert(result == Z_STREAM_END);
     deflateEnd(&defstream);
 
     return nob_sv_from_parts(output, defstream.total_out);
