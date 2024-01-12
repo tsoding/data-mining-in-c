@@ -260,8 +260,9 @@ int main(int argc, char **argv)
             nob_log(NOB_INFO, "Predicted Topic: %s", klass_names[predicted_klass]);
             nob_log(NOB_INFO, "Actual Topic: %s", klass_names[actual_klass]);
             nob_log(NOB_INFO, "Elapsed Time: %.3lfsecs", end - begin);
-            nob_log(NOB_INFO, "Success Rate: %zu/%zu (%f)", success, test_samples.count, (float)success/test_samples.count);
+            nob_log(NOB_INFO, "Success: %zu/%zu (%f)", success, test_samples.count, (float)success/test_samples.count);
             nob_log(NOB_INFO, "Progress: %zu/%zu (%f)", i + 1, test_samples.count, (float)(i + 1)/test_samples.count);
+            nob_log(NOB_INFO, "Success rate: %zu/%zu (%f)", success, i + 1, (float)success/(i + 1));
             nob_log(NOB_INFO, "");
         }
 
