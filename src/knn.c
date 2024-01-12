@@ -251,10 +251,9 @@ int main(int argc, char **argv)
         for (size_t i = 0; i < test_samples.count; ++i) {
             Nob_String_View text = test_samples.items[i].text;
             size_t actual_klass = test_samples.items[i].klass;
-            klass_predictor_predict(&kp, text, 3);
 
             double begin = clock_get_secs();
-            size_t predicted_klass = klass_predictor_predict(&kp, nob_sv_from_cstr(buffer), K);
+            size_t predicted_klass = klass_predictor_predict(&kp, text, K);
             double end = clock_get_secs();
             if (predicted_klass == actual_klass) success += 1;
             nob_log(NOB_INFO, "Text: "SV_Fmt, SV_Arg(text));
