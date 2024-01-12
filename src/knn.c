@@ -18,14 +18,14 @@ Nob_String_View deflate_sv(Arena *arena, Nob_String_View sv)
     void *output = arena_alloc(arena, output_size);
 
     z_stream defstream = {0};
-    defstream.avail_in = (uInt)sv.count;//(uInt)strlen(a)+1; // size of input, string + terminator
-    defstream.next_in = (Bytef *)sv.data; // input char array
-    defstream.avail_out = (uInt)output_size; // size of output
-    defstream.next_out = (Bytef *)output; // output char array
+    defstream.avail_in = (uInt)sv.count;
+    defstream.next_in = (Bytef *)sv.data;
+    defstream.avail_out = (uInt)output_size;
+    defstream.next_out = (Bytef *)output;
 
     deflateInit(&defstream, Z_BEST_COMPRESSION);
     int result = deflate(&defstream, Z_FINISH);
-    assert(result == Z_STREAM_END);
+    assert(result == Z_STREAM_END && "Probably not enough output buffer was allocated");
     deflateEnd(&defstream);
 
     return nob_sv_from_parts(output, defstream.total_out);
@@ -228,14 +228,6 @@ int main(int argc, char **argv)
     if (!nob_read_entire_file(train_path, &train_content)) return 1;
     Samples train_samples = parse_samples(nob_sv_from_parts(train_content.items, train_content.count));
 
-    // const char *text = "Investigation into why a panel blew off a Boeing Max 9 jet focuses on missing bolts. Federal regulators are extending the grounding of some Boeing jets after an Alaska Airlines plane lost a side panel last week.";
-    //const char *text = "Tennessee Titans fire coach Mike Vrabel after back-to-back losing seasons The Tennessee Titans have fired coach Mike Vrabel after six seasons with the franchise having won only six of the past 24 games.";
-    // const char *text = "Stock market today: Asian shares retreat after a lackluster day on Wall St, but Tokyo jumps 2%. Asian shares retreated Wednesday after a lackluster session on Wall Street, though Tokyo broke ranks, gaining more than 2% as a weaker yen lifted stock prices for export manufacturers.";
-    // const char *text = "NASA postpones landing astronauts on the moon until at least 2026. Astronauts will have to wait until next year before flying to the moon and at least two years before landing on it.";
-    //const char *text = "Taters the cat steals the show in first video sent by laser from deep space. An orange tabby cat named Taters stars in the first video sent by laser from deep space, stealing the show as he chases a red laser light.";
-    // const char *text = "Startup firm Patronus creates diagnostic tool to catch genAI mistakes Patronus' SimpleSafetyTests checks outputs from AI chatbots and other LLM-based tools to detect anomalies. The goal is to evaluate whether a model is going to fail — or is already failing.";
-    // const char *text = "Spam suspension hits Sohu.com shares (FT.com),FT.com - Shares in Sohu.com, a leading US-listed Chinese internet portal, fell more than 10 per cent on Friday after China's biggest mobile phone network operator imposed a one-year suspension on its multimedia messaging services because of customers being sent spam.";
-
     Klass_Predictor kp = {0};
     klass_predictor_init(&kp, train_samples);
 
@@ -265,7 +257,6 @@ int main(int argc, char **argv)
             nob_log(NOB_INFO, "Success rate: %zu/%zu (%f)", success, i + 1, (float)success/(i + 1));
             nob_log(NOB_INFO, "");
         }
-
     }
 
     return 0;
