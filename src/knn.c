@@ -14,18 +14,17 @@
 // Stolen from https://gist.github.com/arq5x/5315739
 Nob_String_View deflate_sv(Arena *arena, Nob_String_View sv)
 {
-    size_t output_size = sv.count*2;
-    void *output = arena_alloc(arena, output_size);
-
     z_stream defstream = {0};
     defstream.avail_in = (uInt)sv.count;
     defstream.next_in = (Bytef *)sv.data;
+
+    assert(deflateInit(&defstream, Z_BEST_COMPRESSION) == Z_OK, "Failed to initialize zlib deflate stream");
+    size_t output_size = (size_t)deflateBound(&defstream, defstream.avail_in);
+    void *output = arena_alloc(arena, output_size);
     defstream.avail_out = (uInt)output_size;
     defstream.next_out = (Bytef *)output;
 
-    assert(deflateInit(&defstream, Z_BEST_COMPRESSION) == Z_OK, "Failed to initialize zlib deflate stream");
-    int result = deflate(&defstream, Z_FINISH);
-    assert(result == Z_STREAM_END && "Probably not enough output buffer was allocated");
+    assert(deflate(&defstream, Z_FINISH) == Z_STREAM_END && "Probably `avail_in` is zero");
     deflateEnd(&defstream);
 
     return nob_sv_from_parts(output, defstream.total_out);
