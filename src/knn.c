@@ -23,7 +23,7 @@ Nob_String_View deflate_sv(Arena *arena, Nob_String_View sv)
     defstream.avail_out = (uInt)output_size;
     defstream.next_out = (Bytef *)output;
 
-    deflateInit(&defstream, Z_BEST_COMPRESSION);
+    assert(deflateInit(&defstream, Z_BEST_COMPRESSION) == Z_OK, "Failed to initialize zlib deflate stream");
     int result = deflate(&defstream, Z_FINISH);
     assert(result == Z_STREAM_END && "Probably not enough output buffer was allocated");
     deflateEnd(&defstream);
