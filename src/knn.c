@@ -141,7 +141,7 @@ typedef struct {
 
 void klass_predictor_init(Klass_Predictor *kp, Samples train_samples)
 {
-    kp->nprocs = get_nproc();
+    kp->nprocs = get_nprocs();
     kp->chunk_size = train_samples.count/kp->nprocs;
     kp->chunk_rem = train_samples.count%kp->nprocs;
     kp->train_samples = train_samples;
