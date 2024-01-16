@@ -19,16 +19,6 @@
 
 // #define LEAF
 
-static Vector2 project_sample_to_screen(Vector2 sample, float min_x, float max_x, float min_y, float max_y)
-{
-    float w = GetScreenWidth();
-    float h = GetScreenHeight();
-    return CLITERAL(Vector2) {
-        .x = (sample.x - min_x)/(max_x - min_x)*w,
-        .y = h - (sample.y - min_y)/(max_y - min_y)*h,
-    };
-}
-
 typedef struct {
     Vector2 *items;
     size_t count;
@@ -126,15 +116,17 @@ typedef enum {
     LEAF_ENTROPY,
 } Leaf_Attr;
 
-int main(void)
+int main(int argc, char **argv)
 {
 #ifdef LEAF
+    const char *program = nob_shift_args(&argc, &argv);
+
     float min_x = FLT_MAX;
     float max_x = FLT_MIN;
     float min_y = FLT_MAX;
     float max_y = FLT_MIN;
 
-    const char *leaf_path = "leaf.csv";
+    const char *leaf_path = nob_shift_args(&argc, &argv);
     Nob_String_Builder sb = {0};
     if (!nob_read_entire_file(leaf_path, &sb)) return 1;
 
@@ -146,7 +138,7 @@ int main(void)
             Nob_String_View attr = nob_sv_chop_by_delim(&line, ',');
             float value = strtof(nob_temp_sprintf(SV_Fmt, SV_Arg(attr)), NULL);
             switch (i) {
-            case LEAF_CLASS:   p.x = value; break;
+            case LEAF_ENTROPY:   p.x = value; break;
             case LEAF_ELONGATION: p.y = value; break;
             default: {}
             }
@@ -176,7 +168,14 @@ int main(void)
     generate_new_state(min_x, max_x, min_y, max_y);
     recluster_state();
 
+    float zoom = 1.0f;
+    float zoom_vel = 0.0f;
+    Vector2 position = {0};
     while (!WindowShouldClose()) {
+        float w = GetScreenWidth();
+        float h = GetScreenHeight();
+        float dt = GetFrameTime();
+
         if (IsKeyPressed(KEY_R)) {
             generate_new_state(min_x, max_x, min_y, max_y);
             recluster_state();
@@ -185,22 +184,39 @@ int main(void)
             update_means(min_x, max_x, min_y, max_y);
             recluster_state();
         }
+
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+            position = Vector2Subtract(position, Vector2Scale(GetMouseDelta(), 1/zoom));
+        }
+
+        zoom += zoom_vel*dt;
+        if (zoom < 1.0) zoom = 1.0;
+        zoom_vel += GetMouseWheelMove()*50;
+        zoom_vel *= 0.9;
+
         BeginDrawing();
         ClearBackground(GetColor(0x181818AA));
-        for (size_t i = 0; i < set.count; ++i) {
-            Vector2 it = set.items[i];
-            DrawCircleV(project_sample_to_screen(it, min_x, max_x, min_y, max_y), SAMPLE_RADIUS, RED);
-        }
-        for (size_t i = 0; i < K; ++i) {
-            Color color = colors[i%colors_count];
+            Camera2D camera = {
+                .zoom = zoom,
+                .offset = (Vector2){w/2, h/2},
+                .target = position,
+            };
+            BeginMode2D(camera);
+                for (size_t i = 0; i < set.count; ++i) {
+                    Vector2 it = set.items[i];
+                    DrawCircleV(it, SAMPLE_RADIUS/camera.zoom, RED);
+                }
+                for (size_t i = 0; i < K; ++i) {
+                    Color color = colors[i%colors_count];
 
-            for (size_t j = 0; j < clusters[i].count; ++j) {
-                Vector2 it = clusters[i].items[j];
-                DrawCircleV(project_sample_to_screen(it, min_x, max_x, min_y, max_y), SAMPLE_RADIUS, color);
-            }
+                    for (size_t j = 0; j < clusters[i].count; ++j) {
+                        Vector2 it = clusters[i].items[j];
+                        DrawCircleV(it, SAMPLE_RADIUS/camera.zoom, color);
+                    }
 
-            DrawCircleV(project_sample_to_screen(means[i], min_x, max_x, min_y, max_y), MEAN_RADIUS, WHITE);
-        }
+                    DrawCircleV(means[i], MEAN_RADIUS/camera.zoom, WHITE);
+                }
+            EndMode2D();
         EndDrawing();
     }
     CloseWindow();
