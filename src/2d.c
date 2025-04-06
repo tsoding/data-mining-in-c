@@ -17,6 +17,15 @@
 
 #include "common.c"
 
+static Color colors[] = {
+    GOLD,
+    PINK,
+    MAROON,
+    LIME,
+    SKYBLUE,
+    VIOLET,
+};
+
 // #define LEAF
 
 typedef struct {
@@ -151,6 +160,9 @@ int main(int argc, char **argv)
     }
     nob_temp_reset();
 #else
+    NOB_UNUSED(argc);
+    NOB_UNUSED(argv);
+
     float min_x = -20;
     float max_x = 20;
     float min_y = -20;

@@ -1,3 +1,5 @@
 nob
 nob.old
 build/
+raylib/*.o
+raylib/*.a
